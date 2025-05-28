@@ -83,3 +83,12 @@
     border: 3px solid rgba(244, 67, 54, 0.8);
     border-radius: 50%;
 }
+
+.valid-move.en-passant::after {
+    width: 50px;
+    height: 50px;
+    background-color: transparent;
+    border: 3px solid rgba(156, 39, 176, 0.8);
+    border-radius: 50%;
+    border-style: dashed;
+}

@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const turnIndicator = document.getElementById('turn-indicator');
     let selectedSquare = null;
     let currentPlayer = 'white';
+    let lastMove = null; // Track the last move for en passant
     
     const pieces = {
         black: {
@@ -56,32 +57,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 chessboard.appendChild(square);
             }
         }
-    }
-
-    // Clear all highlights
+    }    // Clear all highlights
     function clearHighlights() {
         document.querySelectorAll('.square').forEach(square => {
-            square.classList.remove('selected', 'valid-move', 'has-piece');
+            square.classList.remove('selected', 'valid-move', 'has-piece', 'en-passant');
         });
-    }
-
-    // Get valid moves for a piece (simplified rules)
+    }// Get valid moves for a piece (simplified rules)
     function getValidMoves(row, col, piece) {
         const validMoves = [];
         const { type, color } = piece;
 
-        switch (type) {
-            case 'pawn':
+        switch (type) {case 'pawn':
                 const direction = color === 'white' ? -1 : 1;
                 const startRow = color === 'white' ? 6 : 1;
-                
-                // Move forward one square
+                  // Move forward one square
                 if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
-                    validMoves.push([row + direction, col]);
+                    validMoves.push({ row: row + direction, col: col, type: 'normal' });
                     
                     // Move forward two squares from starting position
                     if (row === startRow && !board[row + 2 * direction][col]) {
-                        validMoves.push([row + 2 * direction, col]);
+                        validMoves.push({ row: row + 2 * direction, col: col, type: 'normal' });
                     }
                 }
                 
@@ -90,13 +85,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (col + dc >= 0 && col + dc < 8 && row + direction >= 0 && row + direction < 8) {
                         const targetPiece = board[row + direction][col + dc];
                         if (targetPiece && targetPiece.color !== color) {
-                            validMoves.push([row + direction, col + dc]);
+                            validMoves.push({ row: row + direction, col: col + dc, type: 'capture' });
                         }
                     }
                 }
-                break;
-
-            case 'rook':
+                  // En passant
+                if (lastMove && lastMove.piece.type === 'pawn' && lastMove.piece.color !== color) {
+                    // Check if the last move was a two-square pawn move
+                    if (Math.abs(lastMove.fromRow - lastMove.toRow) === 2) {
+                        // Check if we're on the correct rank for en passant
+                        const enPassantRank = color === 'white' ? 3 : 4;
+                        if (row === enPassantRank) {
+                            // Check if the opponent's pawn is adjacent
+                            if (Math.abs(col - lastMove.toCol) === 1 && lastMove.toRow === row) {
+                                // Add en passant capture move
+                                validMoves.push({ row: row + direction, col: lastMove.toCol, type: 'en-passant' });
+                            }
+                        }
+                    }
+                }
+                break;            case 'rook':
                 // Horizontal and vertical moves
                 const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
                 for (const [dr, dc] of directions) {
@@ -107,18 +115,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         const targetPiece = board[newRow][newCol];
                         if (!targetPiece) {
-                            validMoves.push([newRow, newCol]);
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
                         } else {
                             if (targetPiece.color !== color) {
-                                validMoves.push([newRow, newCol]);
+                                validMoves.push({ row: newRow, col: newCol, type: 'capture' });
                             }
                             break;
                         }
                     }
                 }
-                break;
-
-            case 'bishop':
+                break;            case 'bishop':
                 // Diagonal moves
                 const diagonalDirections = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
                 for (const [dr, dc] of diagonalDirections) {
@@ -129,10 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         const targetPiece = board[newRow][newCol];
                         if (!targetPiece) {
-                            validMoves.push([newRow, newCol]);
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
                         } else {
                             if (targetPiece.color !== color) {
-                                validMoves.push([newRow, newCol]);
+                                validMoves.push({ row: newRow, col: newCol, type: 'capture' });
                             }
                             break;
                         }
@@ -140,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
 
-            case 'queen':
+            case 'queen':            case 'queen':
                 // Combination of rook and bishop moves
                 const queenDirections = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
                 for (const [dr, dc] of queenDirections) {
@@ -151,18 +157,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         const targetPiece = board[newRow][newCol];
                         if (!targetPiece) {
-                            validMoves.push([newRow, newCol]);
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
                         } else {
                             if (targetPiece.color !== color) {
-                                validMoves.push([newRow, newCol]);
+                                validMoves.push({ row: newRow, col: newCol, type: 'capture' });
                             }
                             break;
                         }
                     }
                 }
-                break;
-
-            case 'king':
+                break;            case 'king':
                 // One square in any direction
                 const kingMoves = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
                 for (const [dr, dc] of kingMoves) {
@@ -170,14 +174,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newCol = col + dc;
                     if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
                         const targetPiece = board[newRow][newCol];
-                        if (!targetPiece || targetPiece.color !== color) {
-                            validMoves.push([newRow, newCol]);
+                        if (!targetPiece) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
+                        } else if (targetPiece.color !== color) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'capture' });
                         }
                     }
                 }
-                break;
-
-            case 'knight':
+                break;            case 'knight':
                 // L-shaped moves
                 const knightMoves = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
                 for (const [dr, dc] of knightMoves) {
@@ -185,8 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newCol = col + dc;
                     if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
                         const targetPiece = board[newRow][newCol];
-                        if (!targetPiece || targetPiece.color !== color) {
-                            validMoves.push([newRow, newCol]);
+                        if (!targetPiece) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
+                        } else if (targetPiece.color !== color) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'capture' });
                         }
                     }
                 }
@@ -194,22 +200,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return validMoves;
-    }
-
-    // Highlight valid moves
+    }    // Highlight valid moves
     function highlightValidMoves(validMoves) {
-        validMoves.forEach(([row, col]) => {
+        validMoves.forEach((move) => {
+            const { row, col, type } = move;
             const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
             square.classList.add('valid-move');
-            if (board[row][col]) {
+            
+            if (type === 'capture') {
                 square.classList.add('has-piece');
+            } else if (type === 'en-passant') {
+                square.classList.add('en-passant');
             }
         });
-    }    // Move piece
+    }
+    
     function movePiece(fromRow, fromCol, toRow, toCol) {
         const piece = board[fromRow][fromCol];
+        
+        // Check if this is an en passant capture
+        let isEnPassant = false;
+        if (piece.type === 'pawn' && Math.abs(fromCol - toCol) === 1 && !board[toRow][toCol]) {
+            // This is an en passant capture
+            isEnPassant = true;
+            // Remove the captured pawn
+            board[fromRow][toCol] = null;
+        }
+        
+        // Make the move
         board[toRow][toCol] = piece;
         board[fromRow][fromCol] = null;
+        
+        // Record the move for en passant tracking
+        lastMove = {
+            piece: piece,
+            fromRow: fromRow,
+            fromCol: fromCol,
+            toRow: toRow,
+            toCol: toCol,
+            isEnPassant: isEnPassant
+        };
         
         // Switch turns
         currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
