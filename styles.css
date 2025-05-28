@@ -1,9 +1,21 @@
 .chessboard-container {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     background-color: #f0f0f0;
+}
+
+#turn-indicator {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    background-color: #333;
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 #chessboard {
@@ -40,4 +52,34 @@
 
 .piece {
     user-select: none;
+}
+
+.selected {
+    background-color: #ffeb3b !important;
+    box-shadow: inset 0 0 10px rgba(255, 193, 7, 0.8);
+}
+
+.valid-move {
+    position: relative;
+}
+
+.valid-move::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background-color: rgba(76, 175, 80, 0.8);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.valid-move.has-piece::after {
+    width: 60px;
+    height: 60px;
+    background-color: transparent;
+    border: 3px solid rgba(244, 67, 54, 0.8);
+    border-radius: 50%;
 }

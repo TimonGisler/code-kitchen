@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chessboard = document.getElementById('chessboard');
+    const turnIndicator = document.getElementById('turn-indicator');
+    let selectedSquare = null;
+    let currentPlayer = 'white';
+    
     const pieces = {
         black: {
             king: '♔',
@@ -19,50 +23,240 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Initial piece positions
-    const initialBoard = [
-        ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'],
-        ['pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
-        Array(8).fill(null),
-        Array(8).fill(null),
-        Array(8).fill(null),
-        Array(8).fill(null),
-        ['pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
-        ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
+    // Board state - keeps track of pieces
+    const board = [
+        [{ type: 'rook', color: 'black' }, { type: 'knight', color: 'black' }, { type: 'bishop', color: 'black' }, { type: 'queen', color: 'black' }, { type: 'king', color: 'black' }, { type: 'bishop', color: 'black' }, { type: 'knight', color: 'black' }, { type: 'rook', color: 'black' }],
+        [{ type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [{ type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }],
+        [{ type: 'rook', color: 'white' }, { type: 'knight', color: 'white' }, { type: 'bishop', color: 'white' }, { type: 'queen', color: 'white' }, { type: 'king', color: 'white' }, { type: 'bishop', color: 'white' }, { type: 'knight', color: 'white' }, { type: 'rook', color: 'white' }]
     ];
 
     // Create the chessboard
-    for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-            const square = document.createElement('div');
-            square.className = `square ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
-            square.dataset.row = row;
-            square.dataset.col = col;
+    function createBoard() {
+        chessboard.innerHTML = '';
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const square = document.createElement('div');
+                square.className = `square ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                square.dataset.row = row;
+                square.dataset.col = col;
 
-            // Add pieces
-            const piece = initialBoard[row][col];
-            if (piece) {
-                const color = row < 2 ? 'black' : 'white';
-                square.innerHTML = `<span class="piece">${pieces[color][piece]}</span>`;
+                // Add pieces
+                const piece = board[row][col];
+                if (piece) {
+                    square.innerHTML = `<span class="piece">${pieces[piece.color][piece.type]}</span>`;
+                    square.dataset.pieceColor = piece.color;
+                    square.dataset.pieceType = piece.type;
+                }
+
+                chessboard.appendChild(square);
             }
-
-            chessboard.appendChild(square);
         }
     }
 
-    // Add click event listener for squares
+    // Clear all highlights
+    function clearHighlights() {
+        document.querySelectorAll('.square').forEach(square => {
+            square.classList.remove('selected', 'valid-move', 'has-piece');
+        });
+    }
+
+    // Get valid moves for a piece (simplified rules)
+    function getValidMoves(row, col, piece) {
+        const validMoves = [];
+        const { type, color } = piece;
+
+        switch (type) {
+            case 'pawn':
+                const direction = color === 'white' ? -1 : 1;
+                const startRow = color === 'white' ? 6 : 1;
+                
+                // Move forward one square
+                if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
+                    validMoves.push([row + direction, col]);
+                    
+                    // Move forward two squares from starting position
+                    if (row === startRow && !board[row + 2 * direction][col]) {
+                        validMoves.push([row + 2 * direction, col]);
+                    }
+                }
+                
+                // Capture diagonally
+                for (const dc of [-1, 1]) {
+                    if (col + dc >= 0 && col + dc < 8 && row + direction >= 0 && row + direction < 8) {
+                        const targetPiece = board[row + direction][col + dc];
+                        if (targetPiece && targetPiece.color !== color) {
+                            validMoves.push([row + direction, col + dc]);
+                        }
+                    }
+                }
+                break;
+
+            case 'rook':
+                // Horizontal and vertical moves
+                const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                for (const [dr, dc] of directions) {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = row + dr * i;
+                        const newCol = col + dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push([newRow, newCol]);
+                        } else {
+                            if (targetPiece.color !== color) {
+                                validMoves.push([newRow, newCol]);
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+
+            case 'bishop':
+                // Diagonal moves
+                const diagonalDirections = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+                for (const [dr, dc] of diagonalDirections) {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = row + dr * i;
+                        const newCol = col + dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push([newRow, newCol]);
+                        } else {
+                            if (targetPiece.color !== color) {
+                                validMoves.push([newRow, newCol]);
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+
+            case 'queen':
+                // Combination of rook and bishop moves
+                const queenDirections = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                for (const [dr, dc] of queenDirections) {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = row + dr * i;
+                        const newCol = col + dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push([newRow, newCol]);
+                        } else {
+                            if (targetPiece.color !== color) {
+                                validMoves.push([newRow, newCol]);
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+
+            case 'king':
+                // One square in any direction
+                const kingMoves = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                for (const [dr, dc] of kingMoves) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece || targetPiece.color !== color) {
+                            validMoves.push([newRow, newCol]);
+                        }
+                    }
+                }
+                break;
+
+            case 'knight':
+                // L-shaped moves
+                const knightMoves = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
+                for (const [dr, dc] of knightMoves) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece || targetPiece.color !== color) {
+                            validMoves.push([newRow, newCol]);
+                        }
+                    }
+                }
+                break;
+        }
+
+        return validMoves;
+    }
+
+    // Highlight valid moves
+    function highlightValidMoves(validMoves) {
+        validMoves.forEach(([row, col]) => {
+            const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            square.classList.add('valid-move');
+            if (board[row][col]) {
+                square.classList.add('has-piece');
+            }
+        });
+    }    // Move piece
+    function movePiece(fromRow, fromCol, toRow, toCol) {
+        const piece = board[fromRow][fromCol];
+        board[toRow][toCol] = piece;
+        board[fromRow][fromCol] = null;
+        
+        // Switch turns
+        currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+        
+        // Update turn indicator
+        turnIndicator.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
+        
+        // Recreate the board display
+        createBoard();
+    }
+
+    // Handle square clicks
     chessboard.addEventListener('click', (e) => {
         const square = e.target.closest('.square');
-        if (square) {
-            // Remove any previous selections
-            document.querySelectorAll('.square').forEach(sq => 
-                sq.style.backgroundColor = '');
+        if (!square) return;
 
-            // Highlight selected square
-            if (square.style.backgroundColor === '') {
-                const isWhite = square.classList.contains('white');
-                square.style.backgroundColor = isWhite ? '#f7ec5e' : '#c4a145';
+        const row = parseInt(square.dataset.row);
+        const col = parseInt(square.dataset.col);
+        const piece = board[row][col];
+
+        // If clicking on a valid move square
+        if (square.classList.contains('valid-move')) {
+            if (selectedSquare) {
+                const fromRow = parseInt(selectedSquare.dataset.row);
+                const fromCol = parseInt(selectedSquare.dataset.col);
+                movePiece(fromRow, fromCol, row, col);
+                selectedSquare = null;
+                clearHighlights();
             }
+            return;
+        }
+
+        // Clear previous selection
+        clearHighlights();
+
+        // If clicking on a piece of the current player
+        if (piece && piece.color === currentPlayer) {
+            selectedSquare = square;
+            square.classList.add('selected');
+            
+            const validMoves = getValidMoves(row, col, piece);
+            highlightValidMoves(validMoves);
+        } else {
+            selectedSquare = null;
         }
     });
+
+    // Initialize the board
+    createBoard();
 });
