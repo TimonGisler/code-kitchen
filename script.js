@@ -1,9 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chessboard = document.getElementById('chessboard');
     const turnIndicator = document.getElementById('turn-indicator');
+    const promotionOverlay = document.getElementById('promotion-overlay');
     let selectedSquare = null;
     let currentPlayer = 'white';
     let lastMove = null; // Track the last move for en passant
+    let pendingPromotion = null; // Track pending pawn promotion
     
     const pieces = {
         black: {
@@ -62,6 +64,59 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.square').forEach(square => {
             square.classList.remove('selected', 'valid-move', 'has-piece', 'en-passant');
         });
+    }
+    
+    // Check if a pawn move results in promotion
+    function isPromotion(piece, fromRow, toRow) {
+        if (piece.type !== 'pawn') return false;
+        
+        // White pawn reaches rank 0 (top) or black pawn reaches rank 7 (bottom)
+        return (piece.color === 'white' && toRow === 0) || 
+               (piece.color === 'black' && toRow === 7);
+    }
+    
+    // Show promotion dialog
+    function showPromotionDialog(color) {
+        const promotionPieces = document.querySelectorAll('.promotion-piece');
+        
+        // Set the correct piece symbols for the color
+        promotionPieces.forEach(pieceDiv => {
+            const pieceType = pieceDiv.dataset.piece;
+            pieceDiv.textContent = pieces[color][pieceType];
+        });
+        
+        promotionOverlay.style.display = 'flex';
+    }
+    
+    // Hide promotion dialog
+    function hidePromotionDialog() {
+        promotionOverlay.style.display = 'none';
+    }
+    
+    // Complete pawn promotion
+    function completePromotion(pieceType) {
+        if (!pendingPromotion) return;
+        
+        const { toRow, toCol, piece } = pendingPromotion;
+        
+        // Replace the pawn with the chosen piece
+        board[toRow][toCol] = {
+            type: pieceType,
+            color: piece.color
+        };
+        
+        // Clear pending promotion
+        pendingPromotion = null;
+        hidePromotionDialog();
+        
+        // Switch turns
+        currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+        
+        // Update turn indicator
+        turnIndicator.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
+        
+        // Recreate the board display
+        createBoard();
     }// Get valid moves for a piece (simplified rules)
     function getValidMoves(row, col, piece) {
         const validMoves = [];
@@ -226,10 +281,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // Remove the captured pawn
             board[fromRow][toCol] = null;
         }
-        
-        // Make the move
+          // Make the move
         board[toRow][toCol] = piece;
         board[fromRow][fromCol] = null;
+        
+        // Check for pawn promotion
+        if (isPromotion(piece, fromRow, toRow)) {
+            // Store promotion data and show dialog
+            pendingPromotion = {
+                fromRow: fromRow,
+                fromCol: fromCol,
+                toRow: toRow,
+                toCol: toCol,
+                piece: piece,
+                isEnPassant: isEnPassant
+            };
+            
+            showPromotionDialog(piece.color);
+            return; // Don't continue with turn switching until promotion is complete
+        }
         
         // Record the move for en passant tracking
         lastMove = {
@@ -285,6 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             selectedSquare = null;
         }
+    });    // Add event listeners for promotion dialog
+    document.querySelectorAll('.promotion-piece').forEach(pieceDiv => {
+        pieceDiv.addEventListener('click', () => {
+            const pieceType = pieceDiv.dataset.piece;
+            completePromotion(pieceType);
+        });
     });
 
     // Initialize the board
