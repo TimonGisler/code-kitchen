@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const pieces = {
-        black: {
+        white: {
             king: '♔',
             queen: '♕',
             rook: '♖',
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
             knight: '♘',
             pawn: '♙'
         },
-        white: {
+        black: {
             king: '♚',
             queen: '♛',
             rook: '♜',
