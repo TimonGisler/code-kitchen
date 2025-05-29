@@ -60,7 +60,8 @@
 }
 
 .in-check {
-    background-color: #ff7f7f !important; /* Light red to indicate check */
+    background-color: #ff7f7f !important;
+    /* Light red to indicate check */
 }
 
 .valid-move {

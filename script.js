@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chessboard = document.getElementById('chessboard');
     const turnIndicator = document.getElementById('turn-indicator');
-    const promotionOverlay = document.getElementById('promotion-overlay'); let selectedSquare = null;
+    const promotionOverlay = document.getElementById('promotion-overlay'); 
+    let selectedSquare = null;
     let currentPlayer = 'white';
     let lastMove = null; // Track the last move for en passant
     let pendingPromotion = null; // Track pending pawn promotion
