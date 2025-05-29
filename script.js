@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chessboard = document.getElementById('chessboard');
     const turnIndicator = document.getElementById('turn-indicator');
-    const promotionOverlay = document.getElementById('promotion-overlay');
-    let selectedSquare = null;
+    const promotionOverlay = document.getElementById('promotion-overlay');    let selectedSquare = null;
     let currentPlayer = 'white';
     let lastMove = null; // Track the last move for en passant
     let pendingPromotion = null; // Track pending pawn promotion
+    let gameOver = false; // Track if the game has ended
     
     const pieces = {
         black: {
@@ -122,8 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear pending promotion
         pendingPromotion = null;
         hidePromotionDialog();
-        
-        // Switch turns
+          // Switch turns
         currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
         
         // Update turn indicator
@@ -131,6 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Recreate the board display
         createBoard();
+        
+        // Check for stalemate or checkmate
+        checkGameStatus();
     }
 
     // Helper functions for check detection
@@ -344,9 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return isKingInCheck;
-    }
-
-    // Get valid moves for a piece (filters out moves that leave king in check)
+    }    // Get valid moves for a piece (filters out moves that leave king in check)
     function getValidMoves(row, col, piece) {
         const rawMoves = getValidMovesRaw(row, col, piece);
         const legalMoves = [];
@@ -357,7 +357,45 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         return legalMoves;
-    }    // Highlight valid moves
+    }
+
+    // Check if a player has any legal moves
+    function hasLegalMoves(playerColor) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = board[r][c];
+                if (piece && piece.color === playerColor) {
+                    const moves = getValidMoves(r, c, piece);
+                    if (moves.length > 0) {
+                        return true; // Found at least one legal move
+                    }
+                }
+            }
+        }
+        return false; // No legal moves found
+    }    // Check for stalemate or checkmate
+    function checkGameStatus() {
+        if (gameOver) return true; // Game already ended
+        
+        const inCheck = isInCheck(currentPlayer);
+        const hasLegalMovesAvailable = hasLegalMoves(currentPlayer);
+
+        if (!hasLegalMovesAvailable) {
+            gameOver = true; // Set game over flag
+            if (inCheck) {
+                // Checkmate
+                const winner = currentPlayer === 'white' ? 'Black' : 'White';
+                alert(`Checkmate! ${winner} wins!`);
+                turnIndicator.textContent = `Game Over - ${winner} wins by checkmate!`;
+            } else {
+                // Stalemate
+                alert('Stalemate! The game is a draw.');
+                turnIndicator.textContent = 'Game Over - Stalemate (Draw)';
+            }
+            return true; // Game is over
+        }
+        return false; // Game continues
+    }// Highlight valid moves
     function highlightValidMoves(validMoves) {
         validMoves.forEach((move) => {
             const { row, col, type } = move;
@@ -402,8 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showPromotionDialog(piece.color);
             return; // Don't continue with turn switching until promotion is complete
         }
-        
-        // Record the move for en passant tracking
+          // Record the move for en passant tracking
         lastMove = {
             piece: piece,
             fromRow: fromRow,
@@ -421,10 +458,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Recreate the board display
         createBoard();
-    }
-
-    // Handle square clicks
+        
+        // Check for stalemate or checkmate
+        checkGameStatus();
+    }    // Handle square clicks
     chessboard.addEventListener('click', (e) => {
+        // Prevent moves if game is over
+        if (gameOver) return;
+        
         const square = e.target.closest('.square');
         if (!square) return;
 
@@ -457,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             selectedSquare = null;
         }
-    });    // Add event listeners for promotion dialog
+    });// Add event listeners for promotion dialog
     document.querySelectorAll('.promotion-piece').forEach(pieceDiv => {
         pieceDiv.addEventListener('click', () => {
             const pieceType = pieceDiv.dataset.piece;
