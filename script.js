@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let pendingPromotion = null; // Track pending pawn promotion
     let gameOver = false; // Track if the game has ended
     
+    // Track castling rights
+    let castlingRights = {
+        white: { kingSide: true, queenSide: true },
+        black: { kingSide: true, queenSide: true }
+    };
+    
     const pieces = {
         black: {
             king: '♔',
@@ -71,12 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 kingSquare.classList.add('in-check');
             }
         }
-    }
-
-    // Clear all highlights
+    }    // Clear all highlights
     function clearHighlights() {
         document.querySelectorAll('.square').forEach(square => {
-            square.classList.remove('selected', 'valid-move', 'has-piece', 'en-passant');
+            square.classList.remove('selected', 'valid-move', 'has-piece', 'en-passant', 'castle');
         });
     }
     
@@ -133,9 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Check for stalemate or checkmate
         checkGameStatus();
-    }
-
-    // Helper functions for check detection
+    }    // Helper functions for check detection
     function findKing(color) {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
@@ -146,6 +148,80 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         return null; // Should not happen in a normal game
+    }
+
+    // Check if castling is possible
+    function canCastle(color, side) {
+        // Check if castling rights exist
+        if (!castlingRights[color][side + 'Side']) {
+            return false;
+        }
+        
+        // King must not be in check
+        if (isInCheck(color)) {
+            return false;
+        }
+        
+        const row = color === 'white' ? 7 : 0;
+        const kingCol = 4;
+        
+        if (side === 'king') {
+            // King-side castling (short castling)
+            // Check if squares between king and rook are empty
+            if (board[row][5] !== null || board[row][6] !== null) {
+                return false;
+            }
+            
+            // Check if king passes through or ends up in check
+            if (isSquareUnderAttack(row, 5, color === 'white' ? 'black' : 'white') ||
+                isSquareUnderAttack(row, 6, color === 'white' ? 'black' : 'white')) {
+                return false;
+            }
+            
+            // Check if rook is in place
+            const rook = board[row][7];
+            return rook && rook.type === 'rook' && rook.color === color;
+        } else {
+            // Queen-side castling (long castling)
+            // Check if squares between king and rook are empty
+            if (board[row][1] !== null || board[row][2] !== null || board[row][3] !== null) {
+                return false;
+            }
+            
+            // Check if king passes through or ends up in check
+            if (isSquareUnderAttack(row, 2, color === 'white' ? 'black' : 'white') ||
+                isSquareUnderAttack(row, 3, color === 'white' ? 'black' : 'white')) {
+                return false;
+            }
+              // Check if rook is in place
+            const rook = board[row][0];
+            return rook && rook.type === 'rook' && rook.color === color;
+        }
+    }
+
+    // Update castling rights when pieces move
+    function updateCastlingRights(piece, fromRow, fromCol) {
+        const color = piece.color;
+        
+        // If king moves, lose all castling rights
+        if (piece.type === 'king') {
+            castlingRights[color].kingSide = false;
+            castlingRights[color].queenSide = false;
+        }
+        
+        // If rook moves from starting position, lose castling rights for that side
+        if (piece.type === 'rook') {
+            const homeRow = color === 'white' ? 7 : 0;
+            if (fromRow === homeRow) {
+                if (fromCol === 0) {
+                    // Queen-side rook moved
+                    castlingRights[color].queenSide = false;
+                } else if (fromCol === 7) {
+                    // King-side rook moved
+                    castlingRights[color].kingSide = false;
+                }
+            }
+        }
     }
 
     // Generates all possible moves for a piece based on its movement rules,
@@ -246,8 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }
-                break;
-            case 'king':
+                break;            case 'king':
                 const kingMoves = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
                 for (const [dr, dc] of kingMoves) {
                     const newRow = row + dr;
@@ -258,6 +333,131 @@ document.addEventListener('DOMContentLoaded', () => {
                             validMoves.push({ row: newRow, col: newCol, type: 'normal' });
                         } else if (targetPiece.color !== color) {
                             validMoves.push({ row: newRow, col: newCol, type: 'capture' });
+                        }
+                    }
+                }
+                
+                // Castling
+                if (canCastle(color, 'king')) {
+                    validMoves.push({ row: row, col: col + 2, type: 'castle-king' });
+                }
+                if (canCastle(color, 'queen')) {
+                    validMoves.push({ row: row, col: col - 2, type: 'castle-queen' });
+                }
+                break;
+            case 'knight':
+                const knightMoves = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
+                for (const [dr, dc] of knightMoves) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
+                        } else if (targetPiece.color !== color) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'capture' });
+                        }
+                    }
+                }
+                break;
+        }
+        return validMoves;
+    }    function isSquareUnderAttack(targetRow, targetCol, attackingColor) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = board[r][c];
+                if (piece && piece.color === attackingColor) {
+                    if (piece.type === 'pawn') {
+                        const direction = piece.color === 'white' ? -1 : 1;
+                        // Check diagonal pawn attacks
+                        if ((r + direction === targetRow && c - 1 === targetCol) ||
+                            (r + direction === targetRow && c + 1 === targetCol)) {
+                            return true;
+                        }
+                    } else if (piece.type === 'king') {
+                        // King moves (excluding castling to avoid infinite recursion)
+                        const kingMoves = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                        for (const [dr, dc] of kingMoves) {
+                            const newRow = r + dr;
+                            const newCol = c + dc;
+                            if (newRow === targetRow && newCol === targetCol) {
+                                return true;
+                            }
+                        }
+                    } else {
+                        // For other pieces, use their raw moves but exclude castling for kings
+                        const moves = getValidMovesRawForAttackCheck(r, c, piece);
+                        for (const move of moves) {
+                            if (move.row === targetRow && move.col === targetCol) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // Helper function to get moves for attack checking (no castling)
+    function getValidMovesRawForAttackCheck(row, col, piece) {
+        const validMoves = [];
+        const { type, color } = piece;
+
+        switch (type) {
+            case 'rook':
+                const rookDirections = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                for (const [dr, dc] of rookDirections) {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = row + dr * i;
+                        const newCol = col + dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
+                        } else {
+                            if (targetPiece.color !== color) {
+                                validMoves.push({ row: newRow, col: newCol, type: 'capture' });
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+            case 'bishop':
+                const bishopDirections = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+                for (const [dr, dc] of bishopDirections) {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = row + dr * i;
+                        const newCol = col + dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
+                        } else {
+                            if (targetPiece.color !== color) {
+                                validMoves.push({ row: newRow, col: newCol, type: 'capture' });
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+            case 'queen':
+                const queenDirections = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                for (const [dr, dc] of queenDirections) {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = row + dr * i;
+                        const newCol = col + dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        const targetPiece = board[newRow][newCol];
+                        if (!targetPiece) {
+                            validMoves.push({ row: newRow, col: newCol, type: 'normal' });
+                        } else {
+                            if (targetPiece.color !== color) {
+                                validMoves.push({ row: newRow, col: newCol, type: 'capture' });
+                            }
+                            break;
                         }
                     }
                 }
@@ -281,47 +481,43 @@ document.addEventListener('DOMContentLoaded', () => {
         return validMoves;
     }
 
-    function isSquareUnderAttack(targetRow, targetCol, attackingColor) {
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const piece = board[r][c];
-                if (piece && piece.color === attackingColor) {
-                    if (piece.type === 'pawn') {
-                        const direction = piece.color === 'white' ? -1 : 1;
-                        // Check diagonal pawn attacks
-                        if ((r + direction === targetRow && c - 1 === targetCol) ||
-                            (r + direction === targetRow && c + 1 === targetCol)) {
-                            return true;
-                        }
-                    } else {
-                        const moves = getValidMovesRaw(r, c, piece);
-                        for (const move of moves) {
-                            if (move.row === targetRow && move.col === targetCol) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     function isInCheck(playerColor) {
         const kingPosition = findKing(playerColor);
         if (!kingPosition) return false;
         const opponentColor = playerColor === 'white' ? 'black' : 'white';
         return isSquareUnderAttack(kingPosition.row, kingPosition.col, opponentColor);
-    }
-
-    function moveLeavesKingInCheck(fromRow, fromCol, toRow, toCol) {
+    }    function moveLeavesKingInCheck(fromRow, fromCol, toRow, toCol) {
         const pieceToMove = board[fromRow][fromCol];
         if (!pieceToMove) return false; 
 
         const originalPieceAtTarget = board[toRow][toCol];
         
+        // Handle castling simulation
+        let isCastling = false;
+        let rookFromCol, rookToCol, originalRook = null;
+        
+        if (pieceToMove.type === 'king' && Math.abs(fromCol - toCol) === 2) {
+            isCastling = true;
+            if (toCol > fromCol) {
+                // King-side castling
+                rookFromCol = 7;
+                rookToCol = 5;
+            } else {
+                // Queen-side castling
+                rookFromCol = 0;
+                rookToCol = 3;
+            }
+            originalRook = board[fromRow][rookFromCol];
+        }
+        
         board[toRow][toCol] = pieceToMove;
         board[fromRow][fromCol] = null;
+        
+        // Move rook for castling
+        if (isCastling && originalRook) {
+            board[fromRow][rookToCol] = originalRook;
+            board[fromRow][rookFromCol] = null;
+        }
 
         let enPassantCapturedPawn = null;
         let enPassantActualCaptureRow = -1, enPassantActualCaptureCol = -1;
@@ -339,14 +535,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isKingInCheck = isInCheck(pieceToMove.color);
 
+        // Restore board state
         board[fromRow][fromCol] = pieceToMove;
         board[toRow][toCol] = originalPieceAtTarget;
+        
+        // Restore rook for castling
+        if (isCastling && originalRook) {
+            board[fromRow][rookFromCol] = originalRook;
+            board[fromRow][rookToCol] = null;
+        }
+        
         if (enPassantCapturedPawn) {
             board[enPassantActualCaptureRow][enPassantActualCaptureCol] = enPassantCapturedPawn;
         }
 
         return isKingInCheck;
-    }    // Get valid moves for a piece (filters out moves that leave king in check)
+    }// Get valid moves for a piece (filters out moves that leave king in check)
     function getValidMoves(row, col, piece) {
         const rawMoves = getValidMovesRaw(row, col, piece);
         const legalMoves = [];
@@ -395,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true; // Game is over
         }
         return false; // Game continues
-    }// Highlight valid moves
+    }    // Highlight valid moves
     function highlightValidMoves(validMoves) {
         validMoves.forEach((move) => {
             const { row, col, type } = move;
@@ -406,12 +610,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 square.classList.add('has-piece');
             } else if (type === 'en-passant') {
                 square.classList.add('en-passant');
+            } else if (type === 'castle-king' || type === 'castle-queen') {
+                square.classList.add('castle');
             }
         });
     }
-    
-    function movePiece(fromRow, fromCol, toRow, toCol) {
+      function movePiece(fromRow, fromCol, toRow, toCol) {
         const piece = board[fromRow][fromCol];
+        
+        // Check if this is castling
+        let isCastling = false;
+        let rookFromCol, rookToCol;
+        
+        if (piece.type === 'king' && Math.abs(fromCol - toCol) === 2) {
+            isCastling = true;
+            if (toCol > fromCol) {
+                // King-side castling
+                rookFromCol = 7;
+                rookToCol = 5;
+            } else {
+                // Queen-side castling
+                rookFromCol = 0;
+                rookToCol = 3;
+            }
+        }
         
         // Check if this is an en passant capture
         let isEnPassant = false;
@@ -421,9 +643,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Remove the captured pawn
             board[fromRow][toCol] = null;
         }
-          // Make the move
+        
+        // Make the move
         board[toRow][toCol] = piece;
         board[fromRow][fromCol] = null;
+        
+        // Handle castling - move the rook
+        if (isCastling) {
+            const rook = board[fromRow][rookFromCol];
+            board[fromRow][rookToCol] = rook;
+            board[fromRow][rookFromCol] = null;
+        }
+        
+        // Update castling rights
+        updateCastlingRights(piece, fromRow, fromCol);
         
         // Check for pawn promotion
         if (isPromotion(piece, fromRow, toRow)) {
@@ -434,20 +667,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 toRow: toRow,
                 toCol: toCol,
                 piece: piece,
-                isEnPassant: isEnPassant
+                isEnPassant: isEnPassant,
+                isCastling: isCastling
             };
             
             showPromotionDialog(piece.color);
             return; // Don't continue with turn switching until promotion is complete
         }
-          // Record the move for en passant tracking
+        
+        // Record the move for en passant tracking
         lastMove = {
             piece: piece,
             fromRow: fromRow,
             fromCol: fromCol,
             toRow: toRow,
             toCol: toCol,
-            isEnPassant: isEnPassant
+            isEnPassant: isEnPassant,
+            isCastling: isCastling
         };
         
         // Switch turns
@@ -461,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Check for stalemate or checkmate
         checkGameStatus();
-    }    // Handle square clicks
+    }// Handle square clicks
     chessboard.addEventListener('click', (e) => {
         // Prevent moves if game is over
         if (gameOver) return;
