@@ -59,6 +59,10 @@
     box-shadow: inset 0 0 10px rgba(255, 193, 7, 0.8);
 }
 
+.in-check {
+    background-color: #ff7f7f !important; /* Light red to indicate check */
+}
+
 .valid-move {
     position: relative;
 }
