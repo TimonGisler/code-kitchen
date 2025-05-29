@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game Tests</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #output {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        .button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+            display: block;
+            margin: 0 auto 20px auto;
+        }
+        .button:hover {
+            background-color: #005a9e;
+        }
+        .success {
+            color: #4caf50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .info {
+            color: #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏁 Chess Game Test Suite</h1>
+        <p>This test suite validates the core chess game logic including piece movement, check detection, castling, en passant, and more.</p>
+        
+        <button class="button" onclick="runTestsInBrowser()">Run All Tests</button>
+        
+        <div id="output">Click "Run All Tests" to execute the test suite...</div>
+    </div>
+
+    <script src="tests.js"></script>
+    <script>
+        function runTestsInBrowser() {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Running tests...\n\n';
+            
+            // Capture console output
+            const originalLog = console.log;
+            console.log = function(...args) {
+                const message = args.join(' ');
+                output.innerHTML += message + '\n';
+                output.scrollTop = output.scrollHeight;
+                
+                // Apply colors based on content
+                if (message.includes('✓')) {
+                    const lines = output.innerHTML.split('\n');
+                    const lastLine = lines[lines.length - 2]; // -2 because last is empty
+                    lines[lines.length - 2] = `<span class="success">${lastLine}</span>`;
+                    output.innerHTML = lines.join('\n');
+                } else if (message.includes('✗')) {
+                    const lines = output.innerHTML.split('\n');
+                    const lastLine = lines[lines.length - 2];
+                    lines[lines.length - 2] = `<span class="error">${lastLine}</span>`;
+                    output.innerHTML = lines.join('\n');
+                } else if (message.includes('===')) {
+                    const lines = output.innerHTML.split('\n');
+                    const lastLine = lines[lines.length - 2];
+                    lines[lines.length - 2] = `<span class="info">${lastLine}</span>`;
+                    output.innerHTML = lines.join('\n');
+                }
+            };
+            
+            try {
+                runTests();
+            } catch (error) {
+                output.innerHTML += `\n<span class="error">Error running tests: ${error.message}</span>\n`;
+            } finally {
+                // Restore original console.log
+                console.log = originalLog;
+                output.innerHTML += '\n--- Test execution completed ---';
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
