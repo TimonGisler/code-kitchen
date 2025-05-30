@@ -671,10 +671,9 @@ function runTests() {
             const piece = { type: 'queen', color: 'white' };
             test.assertFalse(chess.isPromotion(piece, 1, 0));
         });
-    });
-
-    test.describe('Castling Rights', () => {
+    });    test.describe('Castling Rights', () => {
         test.it('should remove castling rights when king moves', () => {
+            chess.reset();
             const king = { type: 'king', color: 'white' };
             chess.updateCastlingRights(king, 7, 4);
             
@@ -683,6 +682,7 @@ function runTests() {
         });
 
         test.it('should remove king-side castling when king-side rook moves', () => {
+            chess.reset();
             const rook = { type: 'rook', color: 'white' };
             chess.updateCastlingRights(rook, 7, 7);
             
@@ -691,6 +691,7 @@ function runTests() {
         });
 
         test.it('should remove queen-side castling when queen-side rook moves', () => {
+            chess.reset();
             const rook = { type: 'rook', color: 'white' };
             chess.updateCastlingRights(rook, 7, 0);
             
@@ -729,10 +730,15 @@ function runTests() {
             test.assertFalse(chess.isSquareUnderAttack(3, 4, 'white')); // Pawns don't attack straight ahead
             
             chess.reset();
-        });
-
-        test.it('should detect when a square is under attack by a rook', () => {
+        });        test.it('should detect when a square is under attack by a rook', () => {
             chess.reset();
+            // Clear the entire board first
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    chess.clearSquare(r, c);
+                }
+            }
+            // Place a white rook at center
             chess.setPiece(4, 4, { type: 'rook', color: 'white' });
             
             test.assertTrue(chess.isSquareUnderAttack(4, 0, 'white')); // Same row
@@ -800,5 +806,6 @@ function runTests() {
         });
     });
 
+    // Run the test suite
     test.run();
 }
