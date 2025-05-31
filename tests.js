@@ -561,10 +561,7 @@ function runTests() {
             // Place a white knight in center of empty board
             chess.setPiece(4, 4, { type: 'knight', color: 'white' });
               const moves = chess.getValidMovesRaw(4, 4, { type: 'knight', color: 'white' });
-            
-            // Debug: log the actual moves
-            console.log('Knight moves from (4,4):', moves.map(m => `(${m.row},${m.col})`));
-            
+                        
             // Knight should have 8 possible moves from center
             test.assertEqual(moves.length, 8);
             
@@ -586,67 +583,61 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 2 && m.col === 1));
             test.assertTrue(moves.some(m => m.row === 1 && m.col === 2));
         });
-    });
-
-    test.describe('Rook Move Generation', () => {
-        test.it('should generate moves in all four directions', () => {
+    });    
+    test.describe('Rook Move Generation', () => {        test.it('should generate moves in all four directions', () => {
             // Place rook in center of empty board
-            chess.clearSquare(7, 0); // Remove original rook
+            chess.clearBoard();
             chess.setPiece(4, 4, { type: 'rook', color: 'white' });
             
             const moves = chess.getValidMovesRaw(4, 4, { type: 'rook', color: 'white' });
             
-            // Rook should have 14 moves from center (7 in each direction except blocked)
-            test.assertTrue(moves.length > 10);
+            // Rook should have 14 moves from center (7 in each direction)
+            test.assertEqual(moves.length, 14);
             
             // Check moves in each direction
             test.assertTrue(moves.some(m => m.row === 4 && m.col === 7)); // Right
             test.assertTrue(moves.some(m => m.row === 4 && m.col === 0)); // Left
             test.assertTrue(moves.some(m => m.row === 0 && m.col === 4)); // Up
-            test.assertTrue(moves.some(m => m.row === 7 && m.col === 4)); // Down (but blocked by white pawn)
-            
+            test.assertTrue(moves.some(m => m.row === 7 && m.col === 4)); // Down
             
             chess.reset();
         });
-    });
-
+    });    
     test.describe('Bishop Move Generation', () => {
         test.it('should generate diagonal moves', () => {
             // Place bishop in center of empty board
-            chess.clearSquare(7, 2); // Remove original bishop
+            chess.clearBoard();
             chess.setPiece(4, 4, { type: 'bishop', color: 'white' });
             
             const moves = chess.getValidMovesRaw(4, 4, { type: 'bishop', color: 'white' });
             
-            // Bishop should have several diagonal moves
-            test.assertTrue(moves.length > 8);
+            // Bishop should have 13 diagonal moves from center
+            test.assertEqual(moves.length, 13);
             
             // Check diagonal directions
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 3)); // Up-left
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 5)); // Up-right
             test.assertTrue(moves.some(m => m.row === 7 && m.col === 7)); // Down-right
-            
+            test.assertTrue(moves.some(m => m.row === 1 && m.col === 1)); // Up-left
             
             chess.reset();
         });
-    });
-
+    });    
     test.describe('Queen Move Generation', () => {
         test.it('should combine rook and bishop moves', () => {
             // Place queen in center of empty board
-            chess.clearSquare(7, 3); // Remove original queen
+            chess.clearBoard();
             chess.setPiece(4, 4, { type: 'queen', color: 'white' });
             
             const moves = chess.getValidMovesRaw(4, 4, { type: 'queen', color: 'white' });
             
-            // Queen should have many moves (combination of rook and bishop)
-            test.assertTrue(moves.length > 20);
+            // Queen should have 27 moves (combination of rook and bishop: 14 + 13)
+            test.assertEqual(moves.length, 27);
             
             // Check both straight and diagonal moves
             test.assertTrue(moves.some(m => m.row === 4 && m.col === 0)); // Horizontal
             test.assertTrue(moves.some(m => m.row === 0 && m.col === 4)); // Vertical
             test.assertTrue(moves.some(m => m.row === 0 && m.col === 0)); // Diagonal
-            
             
             chess.reset();
         });
@@ -670,7 +661,6 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 4 && m.col === 5)); // Right
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 3)); // Up-left
             
-            
             chess.reset();
         });
     });
@@ -692,7 +682,9 @@ function runTests() {
             const piece = { type: 'queen', color: 'white' };
             test.assertFalse(chess.isPromotion(piece, 1, 0));
         });
-    });    test.describe('Castling Rights', () => {
+    });    
+    
+    test.describe('Castling Rights', () => {
         test.it('should remove castling rights when king moves', () => {
             chess.reset();
             const king = { type: 'king', color: 'white' };
@@ -825,7 +817,7 @@ function runTests() {
             
             chess.reset();
         });
-    });
+    });    
 
     test.run();
 }
