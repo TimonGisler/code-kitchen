@@ -54,12 +54,12 @@ class TestRunner {
     }
 }
 
-// Chess Engine for Testing (isolated from DOM)
 class ChessEngine {
+
     constructor() {
         this.reset();
-    }
-
+    }    
+    
     reset() {
         this.currentPlayer = 'white';
         this.lastMove = null;
@@ -82,7 +82,28 @@ class ChessEngine {
         ];
     }
 
-    // Copy the core logic functions from script.js
+    clearBoard() {
+        this.currentPlayer = 'white';
+        this.lastMove = null;
+        this.gameOver = false;
+        this.castlingRights = {
+            white: { kingSide: true, queenSide: true },
+            black: { kingSide: true, queenSide: true }
+        };
+        
+        // Empty board
+        this.board = [
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null]
+        ];
+    }
+
     findKing(color) {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
@@ -530,18 +551,19 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 3 && m.type === 'capture'));
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 5 && m.type === 'capture'));
             
-            // Clean up
             chess.reset();
         });
-    });
-
-    test.describe('Knight Move Generation', () => {
-        test.it('should generate correct moves for knight', () => {
-            // Place a white knight in center of empty board
-            chess.clearSquare(7, 1); // Remove original knight
-            chess.setPiece(4, 4, { type: 'knight', color: 'white' });
+    });    
+    
+    test.describe('Knight Move Generation', () => {        test.it('should generate correct moves for knight', () => {
+            chess.clearBoard();
             
-            const moves = chess.getValidMovesRaw(4, 4, { type: 'knight', color: 'white' });
+            // Place a white knight in center of empty board
+            chess.setPiece(4, 4, { type: 'knight', color: 'white' });
+              const moves = chess.getValidMovesRaw(4, 4, { type: 'knight', color: 'white' });
+            
+            // Debug: log the actual moves
+            console.log('Knight moves from (4,4):', moves.map(m => `(${m.row},${m.col})`));
             
             // Knight should have 8 possible moves from center
             test.assertEqual(moves.length, 8);
@@ -552,7 +574,6 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 2 && m.col === 5));
             test.assertTrue(moves.some(m => m.row === 2 && m.col === 3));
             
-            // Clean up
             chess.reset();
         });
 
@@ -584,7 +605,7 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 0 && m.col === 4)); // Up
             test.assertTrue(moves.some(m => m.row === 7 && m.col === 4)); // Down (but blocked by white pawn)
             
-            // Clean up
+            
             chess.reset();
         });
     });
@@ -605,7 +626,7 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 5)); // Up-right
             test.assertTrue(moves.some(m => m.row === 7 && m.col === 7)); // Down-right
             
-            // Clean up
+            
             chess.reset();
         });
     });
@@ -626,7 +647,7 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 0 && m.col === 4)); // Vertical
             test.assertTrue(moves.some(m => m.row === 0 && m.col === 0)); // Diagonal
             
-            // Clean up
+            
             chess.reset();
         });
     });
@@ -649,7 +670,7 @@ function runTests() {
             test.assertTrue(moves.some(m => m.row === 4 && m.col === 5)); // Right
             test.assertTrue(moves.some(m => m.row === 3 && m.col === 3)); // Up-left
             
-            // Clean up
+            
             chess.reset();
         });
     });
@@ -806,6 +827,5 @@ function runTests() {
         });
     });
 
-    // Run the test suite
     test.run();
 }
